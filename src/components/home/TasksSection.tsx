@@ -1,0 +1,91 @@
+import TaskCard from "./TaskCard";
+
+// Sample tasks data (will come from database later)
+const sampleTasks = [
+  {
+    id: "1",
+    title: "Review Completo do Novo iPhone",
+    channelName: "Tech Angola",
+    videoId: "dQw4w9WgXcQ",
+    duration: 180,
+    reward: 75.50,
+  },
+  {
+    id: "2",
+    title: "Melhores Momentos do Futebol",
+    channelName: "Desporto+",
+    videoId: "y6120QOlsfU",
+    duration: 240,
+    reward: 110.00,
+  },
+  {
+    id: "3",
+    title: "Aprenda a Cozinhar Funge",
+    channelName: "Culinária Angolana",
+    videoId: "L-0j0vN2z0M",
+    duration: 300,
+    reward: 150.25,
+  },
+  {
+    id: "4",
+    title: "Descubra as Belezas de Luanda",
+    channelName: "Viajar Angola",
+    videoId: "3Z1_cpb0y74",
+    duration: 150,
+    reward: 60.00,
+  },
+  {
+    id: "5",
+    title: "Tutorial de Maquilhagem Rápida",
+    channelName: "Beleza Pura",
+    videoId: "6ZfuNTqbHE8",
+    duration: 200,
+    reward: 95.75,
+  },
+  {
+    id: "6",
+    title: "Dicas de Investimento para Iniciantes",
+    channelName: "Finanças AO",
+    videoId: "ZbZSe6N_BXs",
+    duration: 280,
+    reward: 125.00,
+  },
+];
+
+const TasksSection = () => {
+  return (
+    <section id="tasks" className="py-24 relative">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-surface/50 to-transparent" />
+
+      <div className="container mx-auto px-4 relative z-10">
+        {/* Section Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-5xl font-bold mb-4">
+            Tarefas <span className="text-gradient">Disponíveis</span>
+          </h2>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Escolha um vídeo, assista até o final e receba sua recompensa instantaneamente.
+          </p>
+        </div>
+
+        {/* Tasks Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {sampleTasks.map((task, index) => (
+            <TaskCard
+              key={task.id}
+              title={task.title}
+              channelName={task.channelName}
+              videoId={task.videoId}
+              duration={task.duration}
+              reward={task.reward}
+              index={index}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default TasksSection;
