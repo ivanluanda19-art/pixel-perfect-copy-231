@@ -14,13 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      device_fingerprints: {
+        Row: {
+          block_reason: string | null
+          created_at: string
+          fingerprint: string
+          id: string
+          is_blocked: boolean
+          language: string | null
+          last_seen_at: string
+          platform: string | null
+          screen_resolution: string | null
+          timezone: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          block_reason?: string | null
+          created_at?: string
+          fingerprint: string
+          id?: string
+          is_blocked?: boolean
+          language?: string | null
+          last_seen_at?: string
+          platform?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          block_reason?: string | null
+          created_at?: string
+          fingerprint?: string
+          id?: string
+          is_blocked?: boolean
+          language?: string | null
+          last_seen_at?: string
+          platform?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           balance: number
           created_at: string
+          fraud_flags: number | null
           id: string
           phone: string | null
+          suspicious_activity: boolean | null
           updated_at: string
           username: string | null
         }
@@ -28,8 +75,10 @@ export type Database = {
           avatar_url?: string | null
           balance?: number
           created_at?: string
+          fraud_flags?: number | null
           id: string
           phone?: string | null
+          suspicious_activity?: boolean | null
           updated_at?: string
           username?: string | null
         }
@@ -37,8 +86,10 @@ export type Database = {
           avatar_url?: string | null
           balance?: number
           created_at?: string
+          fraud_flags?: number | null
           id?: string
           phone?: string | null
+          suspicious_activity?: boolean | null
           updated_at?: string
           username?: string | null
         }
@@ -174,6 +225,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_device_fraud: {
+        Args: { _fingerprint: string; _user_id: string }
+        Returns: {
+          existing_user_id: string
+          is_fraud: boolean
+          reason: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -182,6 +241,18 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      register_device: {
+        Args: {
+          _fingerprint: string
+          _language?: string
+          _platform?: string
+          _screen_resolution?: string
+          _timezone?: string
+          _user_agent?: string
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "user"
