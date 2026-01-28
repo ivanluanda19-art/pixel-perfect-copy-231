@@ -64,12 +64,14 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await signUp(formData.email, formData.password, formData.username);
+        const { error, fraudDetected } = await signUp(formData.email, formData.password, formData.username);
         if (error) {
           toast({
             variant: 'destructive',
-            title: 'Erro ao criar conta',
-            description: error.message,
+            title: fraudDetected ? '⚠️ Dispositivo Bloqueado' : 'Erro ao criar conta',
+            description: fraudDetected 
+              ? 'Este dispositivo já está associado a outra conta. Não é permitido criar múltiplas contas.'
+              : error.message,
           });
         } else {
           toast({
@@ -90,12 +92,14 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await signIn(formData.email, formData.password);
+        const { error, fraudDetected } = await signIn(formData.email, formData.password);
         if (error) {
           toast({
             variant: 'destructive',
-            title: 'Erro ao entrar',
-            description: 'Email ou senha incorretos.',
+            title: fraudDetected ? '⚠️ Acesso Bloqueado' : 'Erro ao entrar',
+            description: fraudDetected 
+              ? 'Este dispositivo foi bloqueado por violação de termos ou já está associado a outra conta.'
+              : 'Email ou senha incorretos.',
           });
         } else {
           navigate('/dashboard');
