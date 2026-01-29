@@ -1,58 +1,52 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import TaskCard from "./TaskCard";
+import { Loader2 } from "lucide-react";
 
-// Sample tasks data (will come from database later)
-const sampleTasks = [
-  {
-    id: "1",
-    title: "Cacimbo - Um abraço apertado",
-    channelName: "Cacimbo Oficial",
-    videoId: "vlQghBb2Qkc",
-    duration: 180,
-    reward: 75.50,
-  },
-  {
-    id: "2",
-    title: "Música Angolana 2024",
-    channelName: "Angola Music",
-    videoId: "skky9WaHtPU",
-    duration: 240,
-    reward: 110.00,
-  },
-  {
-    id: "3",
-    title: "Cacimbo - Pura Emoção",
-    channelName: "Cacimbo Oficial",
-    videoId: "Jgth2f3PTz4",
-    duration: 300,
-    reward: 150.25,
-  },
-  {
-    id: "4",
-    title: "Kizomba Hits Angola",
-    channelName: "Kizomba TV",
-    videoId: "sz71Dq65Wbc",
-    duration: 150,
-    reward: 60.00,
-  },
-  {
-    id: "5",
-    title: "Semba Tradicional",
-    channelName: "Semba Angola",
-    videoId: "ndW9FSOtUG0",
-    duration: 200,
-    reward: 95.75,
-  },
-  {
-    id: "6",
-    title: "Afro House Mix",
-    channelName: "Afro Beats AO",
-    videoId: "0smKG7cQBJo",
-    duration: 280,
-    reward: 125.00,
-  },
-];
+interface Task {
+  id: string;
+  title: string;
+  channel_name: string;
+  video_id: string;
+  duration_seconds: number;
+  reward_amount: number;
+}
 
 const TasksSection = () => {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("status", "active")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setTasks(data);
+      }
+      setIsLoading(false);
+    };
+
+    fetchTasks();
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel("tasks-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tasks" },
+        () => fetchTasks()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
     <section id="tasks" className="py-24 relative">
       {/* Background */}
@@ -70,19 +64,29 @@ const TasksSection = () => {
         </div>
 
         {/* Tasks Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sampleTasks.map((task, index) => (
-            <TaskCard
-              key={task.id}
-              title={task.title}
-              channelName={task.channelName}
-              videoId={task.videoId}
-              duration={task.duration}
-              reward={task.reward}
-              index={index}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : tasks.length === 0 ? (
+          <p className="text-center text-muted-foreground py-12">
+            Nenhuma tarefa disponível no momento.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tasks.map((task, index) => (
+              <TaskCard
+                key={task.id}
+                title={task.title}
+                channelName={task.channel_name}
+                videoId={task.video_id}
+                duration={task.duration_seconds}
+                reward={task.reward_amount}
+                index={index}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import { Play, Clock, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 interface TaskCardProps {
   title: string;
@@ -11,6 +12,12 @@ interface TaskCardProps {
 }
 
 const TaskCard = ({ title, channelName, videoId, duration, reward, index }: TaskCardProps) => {
+  const navigate = useNavigate();
+
+  const handleWatch = () => {
+    navigate("/auth");
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -62,7 +69,7 @@ const TaskCard = ({ title, channelName, videoId, duration, reward, index }: Task
           </div>
 
           {/* Watch Button */}
-          <Button variant="default" size="sm">
+          <Button variant="default" size="sm" onClick={handleWatch}>
             Assistir
           </Button>
         </div>
