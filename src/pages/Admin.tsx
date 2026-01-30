@@ -30,6 +30,7 @@ interface Task {
 interface Profile {
   id: string;
   username: string | null;
+  email?: string | null;
   balance: number;
   created_at: string;
 }
@@ -42,7 +43,7 @@ interface Withdrawal {
   payment_method: string;
   phone_number: string | null;
   requested_at: string;
-  profiles?: { username: string | null };
+  profiles?: { username: string | null; email?: string | null };
 }
 
 interface DeviceFingerprint {
@@ -58,7 +59,7 @@ interface DeviceFingerprint {
   last_seen_at: string;
   is_blocked: boolean;
   block_reason: string | null;
-  profiles?: { username: string | null };
+  profiles?: { username: string | null; email?: string | null };
 }
 
 const Admin = () => {
@@ -125,7 +126,17 @@ const Admin = () => {
     if (error) {
       console.error('Error fetching users:', error);
     } else {
-      setUsers(data || []);
+      // Fetch emails for users without username
+      const usersWithEmails = await Promise.all(
+        (data || []).map(async (u) => {
+          if (!u.username) {
+            const { data: emailData } = await supabase.rpc('get_user_email', { _user_id: u.id });
+            return { ...u, email: emailData };
+          }
+          return u;
+        })
+      );
+      setUsers(usersWithEmails);
     }
     setIsLoadingUsers(false);
   };
@@ -140,7 +151,7 @@ const Admin = () => {
     if (error) {
       console.error('Error fetching withdrawals:', error);
     } else {
-      // Fetch usernames separately
+      // Fetch usernames and emails separately
       const withdrawalsWithProfiles = await Promise.all(
         (data || []).map(async (w) => {
           const { data: profileData } = await supabase
@@ -148,7 +159,14 @@ const Admin = () => {
             .select('username')
             .eq('id', w.user_id)
             .maybeSingle();
-          return { ...w, profiles: profileData };
+          
+          let email = null;
+          if (!profileData?.username) {
+            const { data: emailData } = await supabase.rpc('get_user_email', { _user_id: w.user_id });
+            email = emailData;
+          }
+          
+          return { ...w, profiles: { ...profileData, email } };
         })
       );
       setWithdrawals(withdrawalsWithProfiles);
@@ -166,7 +184,7 @@ const Admin = () => {
     if (error) {
       console.error('Error fetching devices:', error);
     } else {
-      // Fetch usernames separately
+      // Fetch usernames and emails separately
       const devicesWithProfiles = await Promise.all(
         (data || []).map(async (d) => {
           const { data: profileData } = await supabase
@@ -174,7 +192,14 @@ const Admin = () => {
             .select('username')
             .eq('id', d.user_id)
             .maybeSingle();
-          return { ...d, profiles: profileData };
+          
+          let email = null;
+          if (!profileData?.username) {
+            const { data: emailData } = await supabase.rpc('get_user_email', { _user_id: d.user_id });
+            email = emailData;
+          }
+          
+          return { ...d, profiles: { ...profileData, email } };
         })
       );
       setDevices(devicesWithProfiles as DeviceFingerprint[]);
@@ -298,6 +323,13 @@ const Admin = () => {
       fetchWithdrawals();
       fetchUsers(); // Refresh balances
     }
+  };
+
+  // Helper function to display user identification (username or email)
+  const getUserDisplayName = (username: string | null | undefined, email: string | null | undefined): string => {
+    if (username) return username;
+    if (email) return email;
+    return 'Sem identificação';
   };
 
   const getStatusBadge = (status: string) => {
@@ -442,7 +474,7 @@ const Admin = () => {
                     <TableBody>
                       {users.map((user) => (
                         <TableRow key={user.id}>
-                          <TableCell className="font-medium">{user.username || 'Sem nome'}</TableCell>
+                          <TableCell className="font-medium">{getUserDisplayName(user.username, user.email)}</TableCell>
                           <TableCell>Kz {user.balance.toFixed(2)}</TableCell>
                           <TableCell>
                             {new Date(user.created_at).toLocaleDateString('pt-AO')}
@@ -484,7 +516,7 @@ const Admin = () => {
                       {withdrawals.map((withdrawal) => (
                         <TableRow key={withdrawal.id}>
                           <TableCell className="font-medium">
-                            {withdrawal.profiles?.username || 'Sem nome'}
+                            {getUserDisplayName(withdrawal.profiles?.username, withdrawal.profiles?.email)}
                           </TableCell>
                           <TableCell>Kz {withdrawal.amount.toFixed(2)}</TableCell>
                           <TableCell className="capitalize">{withdrawal.payment_method}</TableCell>
@@ -565,7 +597,7 @@ const Admin = () => {
                         {devices.map((device) => (
                           <TableRow key={device.id} className={device.is_blocked ? 'bg-red-500/10' : ''}>
                             <TableCell className="font-medium">
-                              {device.profiles?.username || 'Sem nome'}
+                              {getUserDisplayName(device.profiles?.username, device.profiles?.email)}
                             </TableCell>
                             <TableCell>{device.platform || '-'}</TableCell>
                             <TableCell>{device.screen_resolution || '-'}</TableCell>
