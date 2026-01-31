@@ -236,6 +236,7 @@ export type Database = {
           reason: string
         }[]
       }
+      complete_task: { Args: { p_task_id: string }; Returns: undefined }
       get_user_email: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
