@@ -1,39 +1,16 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Play, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Play, Loader2, Youtube } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { z } from 'zod';
-
-const signUpSchema = z.object({
-  username: z.string().min(3, 'Nome de usuário deve ter pelo menos 3 caracteres').max(50),
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
-});
-
-const signInSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(1, 'Senha é obrigatória'),
-});
+import { lovable } from '@/integrations/lovable';
 
 const Auth = () => {
-  const { user, isLoading, signUp, signIn } = useAuth();
-  const navigate = useNavigate();
+  const { user, isLoading } = useAuth();
   const { toast } = useToast();
-  
-  const [isSignUp, setIsSignUp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-  });
 
   if (isLoading) {
     return (
@@ -47,69 +24,25 @@ const Auth = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
-
     try {
-      if (isSignUp) {
-        const validation = signUpSchema.safeParse(formData);
-        if (!validation.success) {
-          toast({
-            variant: 'destructive',
-            title: 'Erro de validação',
-            description: validation.error.errors[0].message,
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        const { error, fraudDetected } = await signUp(formData.email, formData.password, formData.username);
-        if (error) {
-          toast({
-            variant: 'destructive',
-            title: fraudDetected ? '⚠️ Dispositivo Bloqueado' : 'Erro ao criar conta',
-            description: fraudDetected 
-              ? 'Este dispositivo já está associado a outra conta. Não é permitido criar múltiplas contas.'
-              : error.message,
-          });
-        } else {
-          toast({
-            title: 'Conta criada com sucesso!',
-            description: 'Você já pode começar a ganhar dinheiro.',
-          });
-          navigate('/dashboard');
-        }
-      } else {
-        const validation = signInSchema.safeParse(formData);
-        if (!validation.success) {
-          toast({
-            variant: 'destructive',
-            title: 'Erro de validação',
-            description: validation.error.errors[0].message,
-          });
-          setIsSubmitting(false);
-          return;
-        }
-
-        const { error, fraudDetected } = await signIn(formData.email, formData.password);
-        if (error) {
-          toast({
-            variant: 'destructive',
-            title: fraudDetected ? '⚠️ Acesso Bloqueado' : 'Erro ao entrar',
-            description: fraudDetected 
-              ? 'Este dispositivo foi bloqueado por violação de termos ou já está associado a outra conta.'
-              : 'Email ou senha incorretos.',
-          });
-        } else {
-          navigate('/dashboard');
-        }
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao entrar',
+          description: error.message || 'Não foi possível conectar com o YouTube. Tente novamente.',
+        });
       }
     } catch {
       toast({
         variant: 'destructive',
         title: 'Erro',
-        description: 'Ocorreu um erro. Tente novamente.',
+        description: 'Ocorreu um erro ao conectar. Tente novamente.',
       });
     } finally {
       setIsSubmitting(false);
@@ -134,87 +67,50 @@ const Auth = () => {
           <CardTitle className="text-2xl">
             Make<span className="text-primary">Money</span>
           </CardTitle>
-          <CardDescription>
-            {isSignUp ? 'Crie sua conta e comece a ganhar' : 'Entre na sua conta'}
+          <CardDescription className="text-base mt-2">
+            Entre com sua conta do YouTube para começar a ganhar dinheiro assistindo vídeos
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="username">Nome de Usuário</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Seu nome de usuário"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="bg-background/50"
-                  required
-                />
-              </div>
+        <CardContent className="space-y-6">
+          {/* YouTube/Google Login Button */}
+          <Button
+            onClick={handleGoogleSignIn}
+            variant="outline"
+            size="xl"
+            className="w-full bg-[#FF0000]/10 hover:bg-[#FF0000]/20 border-[#FF0000]/30 hover:border-[#FF0000]/50 text-foreground group"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <Youtube className="h-5 w-5 text-[#FF0000] group-hover:scale-110 transition-transform" />
+                <span>Entrar com YouTube</span>
+              </>
             )}
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="bg-background/50"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="bg-background/50 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
+          </Button>
 
-            <Button
-              type="submit"
-              variant="hero"
-              className="w-full"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : isSignUp ? (
-                'Criar Conta'
-              ) : (
-                'Entrar'
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              {isSignUp ? 'Já tem uma conta? Entre aqui' : 'Não tem conta? Cadastre-se'}
-            </button>
+          {/* Info Box */}
+          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <Youtube className="h-4 w-4 text-[#FF0000]" />
+              Porquê usar conta YouTube?
+            </h4>
+            <ul className="text-xs text-muted-foreground space-y-1">
+              <li>• Validação automática dos vídeos assistidos</li>
+              <li>• Segurança contra fraudes e múltiplas contas</li>
+              <li>• Recompensas garantidas após cada tarefa</li>
+              <li>• Saques rápidos e seguros</li>
+            </ul>
           </div>
+
+          {/* Terms */}
+          <p className="text-xs text-center text-muted-foreground">
+            Ao entrar, você concorda com os nossos{' '}
+            <a href="#" className="text-primary hover:underline">Termos de Uso</a>{' '}
+            e{' '}
+            <a href="#" className="text-primary hover:underline">Política de Privacidade</a>
+          </p>
         </CardContent>
       </Card>
     </div>
