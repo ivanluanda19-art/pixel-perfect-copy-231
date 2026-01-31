@@ -1,7 +1,21 @@
 import { Play, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+
+  const handleStartNow = () => {
+    navigate("/auth");
+  };
+
+  const handleHowItWorks = () => {
+    const section = document.getElementById("how-it-works");
+    if (section) {
+      section.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       {/* Background Effects */}
@@ -33,12 +47,12 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up" style={{ animationDelay: "0.3s" }}>
-            <Button variant="hero" size="xl" className="group">
+            <Button variant="hero" size="xl" className="group" onClick={handleStartNow}>
               <Play className="h-5 w-5 fill-primary-foreground" />
               Começar Agora
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Button>
-            <Button variant="glass" size="xl">
+            <Button variant="glass" size="xl" onClick={handleHowItWorks}>
               Como Funciona
             </Button>
           </div>
