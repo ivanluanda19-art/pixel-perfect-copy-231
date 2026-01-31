@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wallet, Phone, Loader2, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Wallet, Loader2, Clock, CheckCircle, XCircle, Building2, CreditCard, Zap } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -27,10 +27,31 @@ interface WithdrawModalProps {
   onSuccess: () => void;
 }
 
+const paymentMethods = [
+  {
+    id: 'iban',
+    name: 'Transferência IBAN',
+    description: 'Transferência bancária padrão (2-3 dias úteis)',
+    icon: Building2,
+  },
+  {
+    id: 'cardless',
+    name: 'Levantamento sem Cartão',
+    description: 'Levante em qualquer ATM sem cartão',
+    icon: CreditCard,
+  },
+  {
+    id: 'express',
+    name: 'Transferência Express',
+    description: 'Receba em minutos (taxa adicional)',
+    icon: Zap,
+  },
+];
+
 const withdrawSchema = z.object({
   amount: z.number().min(500, 'Valor mínimo é Kz 500,00').max(100000, 'Valor máximo é Kz 100.000,00'),
-  phoneNumber: z.string().min(9, 'Número de telefone inválido').max(15),
   paymentMethod: z.string().min(1, 'Selecione um método de pagamento'),
+  accountInfo: z.string().min(1, 'Preencha as informações da conta'),
 });
 
 const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalProps) => {
@@ -38,8 +59,8 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
   const { toast } = useToast();
   
   const [amount, setAmount] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('unitel');
+  const [accountInfo, setAccountInfo] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('iban');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -69,6 +90,32 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
     setIsLoadingHistory(false);
   };
 
+  const getPlaceholder = () => {
+    switch (paymentMethod) {
+      case 'iban':
+        return 'AO06 0000 0000 0000 0000 0000 0';
+      case 'cardless':
+        return 'Número de telefone (923 456 789)';
+      case 'express':
+        return 'IBAN ou número de telefone';
+      default:
+        return '';
+    }
+  };
+
+  const getLabel = () => {
+    switch (paymentMethod) {
+      case 'iban':
+        return 'IBAN da conta';
+      case 'cardless':
+        return 'Número de telefone';
+      case 'express':
+        return 'IBAN ou telefone';
+      default:
+        return 'Informações da conta';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -76,8 +123,8 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
     
     const validation = withdrawSchema.safeParse({
       amount: amountNum,
-      phoneNumber,
       paymentMethod,
+      accountInfo,
     });
 
     if (!validation.success) {
@@ -106,7 +153,7 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
         user_id: user?.id,
         amount: amountNum,
         payment_method: paymentMethod,
-        phone_number: phoneNumber,
+        phone_number: accountInfo,
       });
 
     if (error) {
@@ -118,15 +165,28 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
     } else {
       toast({
         title: 'Saque solicitado!',
-        description: 'Seu saque será processado em até 24 horas.',
+        description: getSuccessMessage(),
       });
       setAmount('');
-      setPhoneNumber('');
+      setAccountInfo('');
       onSuccess();
       fetchWithdrawals();
     }
 
     setIsSubmitting(false);
+  };
+
+  const getSuccessMessage = () => {
+    switch (paymentMethod) {
+      case 'iban':
+        return 'Transferência será processada em 2-3 dias úteis.';
+      case 'cardless':
+        return 'Receberá SMS com código para levantamento em ATM.';
+      case 'express':
+        return 'Transferência express será processada em minutos.';
+      default:
+        return 'Seu saque será processado em breve.';
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -151,9 +211,14 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
     }
   };
 
+  const getMethodName = (method: string) => {
+    const found = paymentMethods.find(m => m.id === method);
+    return found?.name || method;
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass border-border/50 max-w-md">
+      <DialogContent className="glass border-border/50 max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-primary" />
@@ -172,28 +237,41 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
 
           <TabsContent value="withdraw" className="space-y-4 mt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Payment Methods */}
               <div className="space-y-2">
                 <Label>Método de Pagamento</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['unitel', 'africell'].map((method) => (
-                    <Card
-                      key={method}
-                      className={`cursor-pointer transition-all ${
-                        paymentMethod === method 
-                          ? 'border-primary bg-primary/10' 
-                          : 'border-border/50 hover:border-primary/50'
-                      }`}
-                      onClick={() => setPaymentMethod(method)}
-                    >
-                      <CardContent className="flex items-center justify-center p-3">
-                        <Phone className="h-4 w-4 mr-2" />
-                        <span className="capitalize font-medium">{method} Money</span>
-                      </CardContent>
-                    </Card>
-                  ))}
+                <div className="space-y-2">
+                  {paymentMethods.map((method) => {
+                    const Icon = method.icon;
+                    return (
+                      <Card
+                        key={method.id}
+                        className={`cursor-pointer transition-all ${
+                          paymentMethod === method.id 
+                            ? 'border-primary bg-primary/10' 
+                            : 'border-border/50 hover:border-primary/50'
+                        }`}
+                        onClick={() => {
+                          setPaymentMethod(method.id);
+                          setAccountInfo('');
+                        }}
+                      >
+                        <CardContent className="flex items-start gap-3 p-3">
+                          <div className={`p-2 rounded-lg ${paymentMethod === method.id ? 'bg-primary/20' : 'bg-muted'}`}>
+                            <Icon className={`h-4 w-4 ${paymentMethod === method.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                          </div>
+                          <div className="flex-1">
+                            <span className="font-medium text-sm">{method.name}</span>
+                            <p className="text-xs text-muted-foreground">{method.description}</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </div>
 
+              {/* Amount */}
               <div className="space-y-2">
                 <Label htmlFor="amount">Valor (Kz)</Label>
                 <Input
@@ -212,18 +290,28 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
                 </p>
               </div>
 
+              {/* Account Info */}
               <div className="space-y-2">
-                <Label htmlFor="phone">Número de Telefone</Label>
+                <Label htmlFor="accountInfo">{getLabel()}</Label>
                 <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="923 456 789"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  id="accountInfo"
+                  type="text"
+                  placeholder={getPlaceholder()}
+                  value={accountInfo}
+                  onChange={(e) => setAccountInfo(e.target.value)}
                   className="bg-background/50"
                   required
                 />
               </div>
+
+              {/* Express Fee Notice */}
+              {paymentMethod === 'express' && (
+                <div className="rounded-lg bg-yellow-500/10 border border-yellow-500/30 p-3">
+                  <p className="text-xs text-yellow-500">
+                    ⚡ Transferência Express: Taxa de 2% aplicada ao valor do saque
+                  </p>
+                </div>
+              )}
 
               <Button
                 type="submit"
@@ -255,16 +343,17 @@ const WithdrawModal = ({ isOpen, onClose, balance, onSuccess }: WithdrawModalPro
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {withdrawals.map((withdrawal) => (
                   <Card key={withdrawal.id} className="border-border/50">
-                    <CardContent className="flex items-center justify-between p-3">
-                      <div>
+                    <CardContent className="p-3 space-y-2">
+                      <div className="flex items-center justify-between">
                         <p className="font-semibold">Kz {withdrawal.amount.toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(withdrawal.requested_at).toLocaleDateString('pt-AO')}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(withdrawal.status)}
+                          <span className="text-sm">{getStatusText(withdrawal.status)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(withdrawal.status)}
-                        <span className="text-sm">{getStatusText(withdrawal.status)}</span>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{getMethodName(withdrawal.payment_method)}</span>
+                        <span>{new Date(withdrawal.requested_at).toLocaleDateString('pt-AO')}</span>
                       </div>
                     </CardContent>
                   </Card>
