@@ -62,10 +62,24 @@ interface DeviceFingerprint {
   profiles?: { username: string | null; email?: string | null };
 }
 
+const ADMIN_ID = 'f84988d1-3efe-4007-a2bf-1be4b940b1a9';
+
 const Admin = () => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Verificação de admin
+  useEffect(() => {
+    if (!user || user.id !== ADMIN_ID) {
+      toast({
+        variant: 'destructive',
+        title: 'Acesso Negado',
+        description: 'Você não tem permissão para acessar este painel.',
+      });
+      navigate('/dashboard');
+    }
+  }, [user, navigate, toast]);
 
   // Tasks state
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -95,11 +109,14 @@ const Admin = () => {
   const [isLoadingDevices, setIsLoadingDevices] = useState(true);
 
   useEffect(() => {
-    fetchTasks();
-    fetchUsers();
-    fetchWithdrawals();
-    fetchDevices();
-  }, []);
+    // Só carrega dados se for admin
+    if (user?.id === ADMIN_ID) {
+      fetchTasks();
+      fetchUsers();
+      fetchWithdrawals();
+      fetchDevices();
+    }
+  }, [user]);
 
   const fetchTasks = async () => {
     setIsLoadingTasks(true);
@@ -348,6 +365,18 @@ const Admin = () => {
         return <Badge>{status}</Badge>;
     }
   };
+
+  // Loading state while checking admin permissions
+  if (!user || user.id !== ADMIN_ID) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Verificando permissões...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
